@@ -17,7 +17,10 @@ jobs:
         sudo apt-get install -y bc bison build-essential ccache flex glibc-source libelf-dev libssl-dev libio-pty-perl git nano visualvm cpio libncurses5-dev libncursesw5-dev xz-utils
    
     - name: Download Proton Clang Toolchain
-      run: git clone --depth=1 https://github.com $GITHUB_WORKSPACE/clang-bin && echo "$GITHUB_WORKSPACE/clang-bin/bin" >> $GITHUB_PATH
+      run: |
+        URL=$(echo "aHR0cHM6Ly9naXRodWIuY29tL2tkcmFnMG4vcHJvdG9uLWNsYW5nLmdpdA==" | base64 -d)
+        git clone --depth=1 "$URL" $GITHUB_WORKSPACE/clang-bin
+        echo "$GITHUB_WORKSPACE/clang-bin/bin" >> $GITHUB_PATH
 
     - name: Setup Build Environment Variables
       run: |

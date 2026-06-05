@@ -18,11 +18,11 @@ jobs:
 
     - name: Download Google Clang Toolchain
       run: |
-        mkdir clang
+        mkdir -p clang
         cd clang
-        # 下载 Android 官方推荐的 Clang 版本（此处以 r383902 为例，可根据内核实际需求调整）
-        wget https://googlesource.com
-        tar -xf clang-r383902.tar.gz
+        # 使用更稳定的 AOSP Clang 预编译包镜像
+        curl -LO https://googlesource.com
+        tar -xzf clang-r383902.tar.gz
         echo "$(pwd)/bin" >> $GITHUB_PATH
 
     - name: Setup Build Environment Variables

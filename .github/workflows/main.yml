@@ -16,18 +16,19 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y bc bison build-essential ccache flex glibc-source libelf-dev libssl-dev libio-pty-perl git nano visualvm cpio libncurses5-dev libncursesw5-dev xz-utils
 
-    - name: Download Google Clang Toolchain (Stable Git Mirror)
+    - name: Download Proton Clang Toolchain
       run: |
-        # 直接浅克隆 AOSP 预编译的 Clang 仓库（这里使用相对兼容的 r416183b 版本）
-        git clone --depth=1 https://googlesource.com clang-bin
-        # 将 Clang 的 bin 目录加入到系统的环境变量中
-        echo "$(pwd)/clang-bin/clang-r416183b/bin" >> $GITHUB_PATH
+        # 使用 git 极速克隆专为 Android 内核优化的库（仅克隆最近一次提交，体积小、速度快）
+        git clone --depth=1 https://github.com clang-bin
+        # 将 Clang 的 bin 目录直接注入到 GitHub Actions 的环境变量中
+        echo "$(pwd)/clang-bin/bin" >> $GITHUB_PATH
 
     - name: Setup Build Environment Variables
       run: |
         echo "ARCH=arm64" >> $GITHUB_ENV
         echo "SUBARCH=arm64" >> $GITHUB_ENV
         echo "CROSS_COMPILE=aarch64-linux-gnu-" >> $GITHUB_ENV
+        echo "CROSS_COMPILE_ARM32=arm-linux-gnueabi-" >> $GITHUB_ENV
 
     - name: Run Build
       run: |

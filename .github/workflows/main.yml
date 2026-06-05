@@ -31,36 +31,46 @@ jobs:
 
     - name: Run Build
       run: |
-        # 1. 自动检测最匹配的 RMX3366 / Kona 配置文件
-        if [ -f "arch/arm64/configs/vendor/kona-perf_defconfig" ]; then
-          DEFCONFIG="vendor/kona-perf_defconfig"
-        elif [ -f "arch/arm64/configs/vendor/kona_defconfig" ]; then
-          DEFCONFIG="vendor/kona_defconfig"
+        # 1. 自动寻找最正确的 OPLUS/Realme 配置文件
+        # 优先寻找名字里带有 oplus, oppo 或 rmx 的特定配置
+        if [ -f "arch/arm64/configs/vendor/oplus_kona_defconfig" ]; then
+          DEFCONFIG="vendor/oplus_kona_defconfig"
         elif [ -f "arch/arm64/configs/vendor/rmx3366_defconfig" ]; then
           DEFCONFIG="vendor/rmx3366_defconfig"
+        elif [ -f "arch/arm64/configs/vendor/kona-perf_defconfig" ]; then
+          DEFCONFIG="vendor/kona-perf_defconfig"
         else
           DEFCONFIG="vendor/$(ls arch/arm64/configs/vendor/ | head -n 1)"
         fi
-        
         echo "Selected Defconfig: $DEFCONFIG"
 
-        # 2. 彻底修复电源驱动中的 Clang 类型冲突 Bug
-        # 在头文件最开始处直接前向声明结构体 struct smb_charger
+        # 2. 修复电源驱动代码中的 Clang 类型冲突（保留之前的修复）
         if [ -f "drivers/power/supply/qcom/schgm-flash.h" ]; then
           sed -i '1s/^/struct smb_charger;\n/' drivers/power/supply/qcom/schgm-flash.h
-          echo "Successfully patched schgm-flash.h"
         fi
-        
-        # 同时确保 .c 文件也能读到完整结构定义
         if [ -f "drivers/power/supply/qcom/schgm-flash.c" ]; then
           sed -i 's/#include "schgm-flash.h"/#include "smb5-lib.h"\n#include "schgm-flash.h"/' drivers/power/supply/qcom/schgm-flash.c
-          echo "Successfully patched schgm-flash.c"
         fi
 
-        # 3. 生成内核配置
+        # 3. 生成基础内核配置
         make O=out $DEFCONFIG CC=clang
 
-        # 4. 开始全核编译
+        # 4. 强制追加 OPLUS 驱动宏定义（防止链接阶段缺失 VOOC 闪充和板级符号）
+        # 很多第三方仓库需要手动把 oplus 的扩展配置追加入 .config
+        if [ -f "arch/arm64/configs/vendor/oplus.config" ]; then
+          echo "Merging oplus.config..."
+          ARCH=arm64 scripts/kconfig/merge_config.sh -O out out/.config arch/arm64/configs/vendor/oplus.config
+        fi
+
+        # 强制在配置文件末尾写入核心宏，兜底缺失的符号
+        echo "CONFIG_OPLUS_CHG=y" >> out/.config
+        echo "CONFIG_OPLUS_CHG_VOOC=y" >> out/.config
+        echo "CONFIG_OPLUS_BOARD_INFO=y" >> out/.config
+        
+        # 刷新配置文件以使手动追加的宏生效
+        make O=out olddefconfig CC=clang
+
+        # 5. 开始全核链接编译
         make -j$(nproc --all) O=out CC=clang LLVM=1 LLVM_IAS=1 KCFLAGS="-Wno-error"
 
     - name: Upload Kernel Artifact

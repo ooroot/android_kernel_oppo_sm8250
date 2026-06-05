@@ -1,0 +1,46 @@
+name: Build Android Kernel SM8250
+
+on:
+  workflow_dispatch: # 允许手动点击按钮触发编译
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+
+    steps:
+    - name: Checkout Kernel Source
+      uses: actions/checkout@v4
+
+    - name: Install Build Dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y bc bison build-essential ccache flex glibc-source libelf-dev libssl-dev libio-pty-perl git nano visualvm cpio libncurses5-dev libncursesw5-dev xz-utils
+
+    - name: Download Google Clang Toolchain
+      run: |
+        mkdir clang
+        cd clang
+        # 下载 Android 官方推荐的 Clang 版本（此处以 r383902 为例，可根据内核实际需求调整）
+        wget https://googlesource.com
+        tar -xf clang-r383902.tar.gz
+        echo "$(pwd)/bin" >> $GITHUB_PATH
+
+    - name: Setup Build Environment Variables
+      run: |
+        echo "ARCH=arm64" >> $GITHUB_ENV
+        echo "SUBARCH=arm64" >> $GITHUB_ENV
+        echo "CROSS_COMPILE=aarch64-linux-gnu-" >> $GITHUB_ENV
+
+    - name: Run Build
+      run: |
+        # 1. 生成配置文件（请确认仓库中是否存在该 defconfig，或根据实际文件修改）
+        make O=out vendor/stock_defconfig
+        
+        # 2. 开始编译（使用 Clang 编译器）
+        make -j$(nproc --all) O=out CC=clang
+
+    - name: Upload Kernel Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: Compiled-Kernel-Image
+        path: out/arch/arm64/boot/Image

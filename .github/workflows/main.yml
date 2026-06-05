@@ -31,11 +31,11 @@ jobs:
 
     - name: Run Build
       run: |
-        # 1. 生成配置文件（请确认仓库中是否存在该 defconfig，或根据实际文件修改）
-        make O=out vendor/stock_defconfig
-        
-        # 2. 开始编译（使用 Clang 编译器）
-        make -j$(nproc --all) O=out CC=clang
+        # 1. 生成配置文件（加入 CC=clang 强制让 Kconfig 识别 Clang 编译器）
+        make O=out vendor/stock_defconfig CC=clang
+
+        # 2. 开始编译（使用完整的 LLVM=1 参数，停用传统的 GCC 依赖）
+        make -j$(nproc --all) O=out CC=clang LLVM=1 LLVM_IAS=1
 
     - name: Upload Kernel Artifact
       uses: actions/upload-artifact@v4
